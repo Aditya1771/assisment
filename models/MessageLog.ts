@@ -3,7 +3,7 @@ import mongoose, { Schema, model, models } from "mongoose";
 export interface IMessageLog {
   _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
-  channel: "whatsapp" | "sms";
+  channel: "whatsapp" | "sms" | "email";
   to: string;
   body: string;
   context?: string;
@@ -15,7 +15,7 @@ export interface IMessageLog {
 const MessageLogSchema = new Schema<IMessageLog>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    channel: { type: String, enum: ["whatsapp", "sms"], required: true },
+    channel: { type: String, enum: ["whatsapp", "sms", "email"], required: true },
     to: { type: String, required: true },
     body: { type: String, required: true },
     context: String,
