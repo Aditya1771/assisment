@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 
-type Channel = "whatsapp" | "sms";
+type Channel = "whatsapp" | "sms" | "email";
 
 export default function InboxPanel({ channel }: { channel: Channel }) {
   const [context, setContext] = useState("");
   const [preview, setPreview] = useState("");
   const [to, setTo] = useState("");
+  const [subject, setSubject] = useState("");
   const [generating, setGenerating] = useState(false);
   const [sending, setSending] = useState(false);
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -66,27 +67,41 @@ export default function InboxPanel({ channel }: { channel: Channel }) {
     }
     const recipient = to.trim();
     if (!recipient) {
-      showNotif("error", "Enter recipient number.");
+      showNotif("error", `Enter recipient ${channel === "email" ? "email address" : "number"}.`);
+      return;
+    }
+    if (channel === "email" && !subject.trim()) {
+      showNotif("error", "Enter email subject.");
       return;
     }
     setSending(true);
     setNotification(null);
     try {
-      const endpoint = channel === "whatsapp" ? "/api/send/whatsapp" : "/api/send/sms";
+      let endpoint = "";
+      let payload: Record<string, unknown> = {
+        to: recipient,
+        body: preview,
+        context: context.trim() || undefined,
+      };
+      if (channel === "whatsapp") {
+        endpoint = "/api/send/whatsapp";
+      } else if (channel === "sms") {
+        endpoint = "/api/send/sms";
+      } else if (channel === "email") {
+        endpoint = "/api/send/email";
+        payload.subject = subject.trim();
+      }
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: recipient,
-          body: preview,
-          context: context.trim() || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Send failed");
       showNotif("success", "Message sent successfully.");
       setPreview("");
       setTo("");
+      setSubject("");
       void fetchLogs();
     } catch (e) {
       showNotif("error", e instanceof Error ? e.message : "Failed to send");
@@ -141,16 +156,28 @@ export default function InboxPanel({ channel }: { channel: Channel }) {
             rows={5}
             className="w-full px-4 py-3 border border-ink-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none resize-none"
           />
+          {channel === "email" && (
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-ink-700 mb-1">Subject</label>
+              <input
+                type="text"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Email subject"
+                className="w-full px-4 py-3 border border-ink-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+              />
+            </div>
+          )}
           <div className="mt-4 flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-[200px]">
               <label className="block text-sm font-medium text-ink-700 mb-1">
-                Recipient {channel === "whatsapp" ? "(e.g. +1234567890)" : "(phone number)"}
+                Recipient {channel === "email" ? "(e.g. user@example.com)" : channel === "whatsapp" ? "(e.g. +1234567890)" : "(phone number)"}
               </label>
               <input
                 type="text"
                 value={to}
                 onChange={(e) => setTo(e.target.value)}
-                placeholder={channel === "whatsapp" ? "+1234567890" : "+1234567890"}
+                placeholder={channel === "email" ? "user@example.com" : "+1234567890"}
                 className="w-full px-4 py-3 border border-ink-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
               />
             </div>
@@ -160,7 +187,7 @@ export default function InboxPanel({ channel }: { channel: Channel }) {
               disabled={sending}
               className="px-6 py-3 bg-ink-800 text-white rounded-xl font-medium hover:bg-ink-900 disabled:opacity-50 transition"
             >
-              {sending ? "Sending…" : `Send via ${channel === "whatsapp" ? "WhatsApp" : "SMS"}`}
+              {sending ? "Sending…" : `Send via ${channel === "whatsapp" ? "WhatsApp" : channel === "sms" ? "SMS" : "Gmail"}`}
             </button>
           </div>
         </div>
