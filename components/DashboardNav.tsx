@@ -37,6 +37,16 @@ export default function DashboardNav() {
       >
         SMS Inbox
       </Link>
+      <Link
+        href="/dashboard/email"
+        className={`font-medium ${
+          pathname === "/dashboard/email"
+            ? "text-primary-600"
+            : "text-ink-600 hover:text-primary-600"
+        }`}
+      >
+        Email Inbox
+      </Link>
     </nav>
   );
 }
